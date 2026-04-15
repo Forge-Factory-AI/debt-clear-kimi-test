@@ -1,0 +1,139 @@
+name: Deploy Preview
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual deploy'
+        required: false
+        default: 'ForgeSmith update'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Fly.io CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Sync ForgeSmith from forge/main
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          FORGE_REPO="Forge-Factory-AI/forge"
+          FORGE_BASE="https://raw.githubusercontent.com/${FORGE_REPO}/main/src/pipeline/templates/forgesmith"
+          AUTH=(-H "Authorization: token ${GH_TOKEN}")
+
+          # Allow repos to opt out of auto-sync
+          if [ -f ".forgesmith-lock" ]; then
+            echo "ForgeSmith locked — skipping sync"
+            exit 0
+          fi
+
+          # Infrastructure files (Dockerfile, start.sh, nginx.conf)
+          curl -sfL "${AUTH[@]}" "${FORGE_BASE}/Dockerfile" -o Dockerfile
+          curl -sfL "${AUTH[@]}" "${FORGE_BASE}/start.sh" -o start.sh && chmod +x start.sh
+          curl -sfL "${AUTH[@]}" "${FORGE_BASE}/nginx.conf" -o nginx.conf
+
+          # ForgeSmith runtime
+          mkdir -p forgesmith
+          curl -sfL "${AUTH[@]}" "${FORGE_BASE}/smith-http.py" -o forgesmith/smith-http.py
+          curl -sfL "${AUTH[@]}" "${FORGE_BASE}/start-forgesmith.sh" -o forgesmith/start-forgesmith.sh && chmod +x forgesmith/start-forgesmith.sh
+          curl -sfL "${AUTH[@]}" "${FORGE_BASE}/extract-build-context.py" -o forgesmith/extract-build-context.py
+
+          # Web UI (manifest-driven to handle hashed filenames)
+          mkdir -p forgesmith/web/assets
+          MANIFEST=$(curl -sfL "${AUTH[@]}" "${FORGE_BASE}/web-dist/files.txt")
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            mkdir -p "forgesmith/web/$(dirname "$file")"
+            curl -sfL "${AUTH[@]}" "${FORGE_BASE}/web-dist/${file}" -o "forgesmith/web/${file}"
+          done <<< "$MANIFEST"
+
+          # Stamp version for tracking
+          FORGE_SHA=$(curl -sL "https://api.github.com/repos/${FORGE_REPO}/commits/main" \
+            "${AUTH[@]}" -H "Accept: application/vnd.github.sha" || echo "unknown")
+          echo "${FORGE_SHA}" > forgesmith/.forge-version
+          echo "ForgeSmith synced from forge@${FORGE_SHA:0:8}"
+
+      - name: Create Fly app (if not exists)
+        run: |
+          flyctl apps list --json | grep -q "${{ vars.FLY_APP_NAME }}" || \
+          flyctl apps create ${{ vars.FLY_APP_NAME }} --org personal
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Create Postgres (if not exists)
+        run: |
+          flyctl postgres list --json | grep -q "${{ vars.FLY_APP_NAME }}-db" || \
+          flyctl postgres create --name ${{ vars.FLY_APP_NAME }}-db --region ewr --vm-size shared-cpu-1x --initial-cluster-size 1 --volume-size 1 || \
+          flyctl postgres create --name ${{ vars.FLY_APP_NAME }}-db --region iad --vm-size shared-cpu-1x --initial-cluster-size 1 --volume-size 1 || \
+          flyctl postgres create --name ${{ vars.FLY_APP_NAME }}-db --region ord --vm-size shared-cpu-1x --initial-cluster-size 1 --volume-size 1
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Attach Postgres (if not attached)
+        run: |
+          flyctl postgres attach ${{ vars.FLY_APP_NAME }}-db --app ${{ vars.FLY_APP_NAME }} 2>/dev/null || true
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Create volume for ForgeSmith state (if not exists)
+        run: |
+          flyctl volumes list --app ${{ vars.FLY_APP_NAME }} --json | grep -q "hermes_data" || \
+          flyctl volumes create hermes_data --app ${{ vars.FLY_APP_NAME }} --region ewr --size 1 --count 1 || true
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Set ForgeSmith secrets
+        run: |
+          flyctl secrets set \
+            FORGESMITH_ENABLED=true \
+            FORGESMITH_ACCESS_TOKEN="${{ secrets.FORGESMITH_ACCESS_TOKEN }}" \
+            ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}" \
+            GH_REPO="${{ github.repository }}" \
+            GH_TOKEN="${{ secrets.GH_TOKEN || github.token }}" \
+            --app ${{ vars.FLY_APP_NAME }} --stage || true
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Generate fly.toml
+        run: |
+          cat > fly.toml << EOF
+          app = "${{ vars.FLY_APP_NAME }}"
+          primary_region = "ewr"
+
+          [build]
+
+          [http_service]
+            internal_port = 3000
+            force_https = true
+            auto_stop_machines = "stop"
+            auto_start_machines = true
+            min_machines_running = 1
+
+          [mounts]
+            source = "hermes_data"
+            destination = "/data"
+
+          [[vm]]
+            size = "shared-cpu-1x"
+            memory = "1024mb"
+            count = 1
+          EOF
+
+      - name: Deploy to Fly.io
+        run: flyctl deploy --remote-only --wait-timeout 300
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Post deployment URL
+        run: |
+          echo "## 🚀 Preview Deployed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** https://${{ vars.FLY_APP_NAME }}.fly.dev" >> $GITHUB_STEP_SUMMARY
+          echo "**ForgeSmith:** https://${{ vars.FLY_APP_NAME }}.fly.dev/smith" >> $GITHUB_STEP_SUMMARY
