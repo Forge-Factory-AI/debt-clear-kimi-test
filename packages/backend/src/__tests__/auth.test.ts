@@ -29,7 +29,7 @@ describe("POST /api/auth/register", () => {
     expect(res.body.user.email).toBe("test@example.com");
     expect(res.body.user.name).toBe("Test User");
     expect(res.headers["set-cookie"]).toBeDefined();
-    const cookies = res.headers["set-cookie"] as string[];
+    const cookies = (res.headers["set-cookie"] as unknown as string[]);
     expect(cookies.some((c) => c.includes("accessToken="))).toBe(true);
     expect(cookies.some((c) => c.includes("refreshToken="))).toBe(true);
   });
@@ -102,7 +102,7 @@ describe("POST /api/auth/login", () => {
     expect(res.body.user).toBeDefined();
     expect(res.body.user.email).toBe("login@example.com");
     expect(res.headers["set-cookie"]).toBeDefined();
-    const cookies = res.headers["set-cookie"] as string[];
+    const cookies = (res.headers["set-cookie"] as unknown as string[]);
     expect(cookies.some((c) => c.includes("accessToken="))).toBe(true);
     expect(cookies.some((c) => c.includes("refreshToken="))).toBe(true);
   });
@@ -149,7 +149,7 @@ describe("POST /api/auth/logout", () => {
       .post("/api/auth/register")
       .send({ email: "logout@example.com", password: "password123" });
 
-    const cookies = registerRes.headers["set-cookie"] as string[];
+    const cookies = (registerRes.headers["set-cookie"] as unknown as string[]);
 
     const res = await request(app)
       .post("/api/auth/logout")
@@ -158,7 +158,7 @@ describe("POST /api/auth/logout", () => {
     expect(res.status).toBe(200);
     expect(res.body.message).toBe("Logged out");
     expect(res.headers["set-cookie"]).toBeDefined();
-    const logoutCookies = res.headers["set-cookie"] as string[];
+    const logoutCookies = (res.headers["set-cookie"] as unknown as string[]);
     expect(logoutCookies.some((c) => c.includes("accessToken=;") || c.includes("Max-Age=0"))).toBe(true);
     expect(logoutCookies.some((c) => c.includes("refreshToken=;") || c.includes("Max-Age=0"))).toBe(true);
   });
@@ -170,7 +170,7 @@ describe("POST /api/auth/refresh", () => {
       .post("/api/auth/register")
       .send({ email: "refresh@example.com", password: "password123" });
 
-    const cookies = registerRes.headers["set-cookie"] as string[];
+    const cookies = (registerRes.headers["set-cookie"] as unknown as string[]);
 
     const res = await request(app)
       .post("/api/auth/refresh")
@@ -179,7 +179,7 @@ describe("POST /api/auth/refresh", () => {
     expect(res.status).toBe(200);
     expect(res.body.message).toBe("Token refreshed");
     expect(res.headers["set-cookie"]).toBeDefined();
-    const newCookies = res.headers["set-cookie"] as string[];
+    const newCookies = (res.headers["set-cookie"] as unknown as string[]);
     expect(newCookies.some((c) => c.includes("accessToken="))).toBe(true);
     expect(newCookies.some((c) => c.includes("refreshToken="))).toBe(true);
   });
@@ -197,7 +197,7 @@ describe("GET /api/auth/me", () => {
       .post("/api/auth/register")
       .send({ email: "me@example.com", password: "password123", name: "Me User" });
 
-    const cookies = registerRes.headers["set-cookie"] as string[];
+    const cookies = (registerRes.headers["set-cookie"] as unknown as string[]);
 
     const res = await request(app)
       .get("/api/auth/me")
