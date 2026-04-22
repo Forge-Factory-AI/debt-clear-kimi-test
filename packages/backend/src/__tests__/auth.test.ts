@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
 import app from "../app.js";
-import { prisma } from "../lib/prisma.js";
+import { prisma } from "../services/prisma.js";
 
 async function cleanupDb() {
   await prisma.payment.deleteMany();

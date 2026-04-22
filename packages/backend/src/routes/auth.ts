@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Request, Response, Router as ExpressRouter } from "express";
-import { prisma } from "../lib/prisma.js";
+import { prisma } from "../services/prisma.js";
 import {
   hashPassword,
   verifyPassword,
