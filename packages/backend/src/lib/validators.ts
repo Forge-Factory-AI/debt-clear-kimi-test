@@ -29,7 +29,13 @@ export const updateDebtSchema = z.object({
   dueDate: z.string().datetime().optional().nullable(),
 });
 
+export const createPaymentSchema = z.object({
+  amount: z.number().positive("Amount must be positive"),
+  note: z.string().max(250, "Note must be at most 250 characters").optional(),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateDebtInput = z.infer<typeof createDebtSchema>;
 export type UpdateDebtInput = z.infer<typeof updateDebtSchema>;
+export type CreatePaymentInput = z.infer<typeof createPaymentSchema>;
