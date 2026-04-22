@@ -11,5 +11,25 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+export const createDebtSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  totalAmount: z.number().positive("Total amount must be positive"),
+  remaining: z.number().min(0, "Remaining must be non-negative").optional(),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  dueDate: z.string().datetime().optional().nullable(),
+});
+
+export const updateDebtSchema = z.object({
+  name: z.string().min(1, "Name is required").optional(),
+  totalAmount: z.number().positive("Total amount must be positive").optional(),
+  remaining: z.number().min(0, "Remaining must be non-negative").optional(),
+  description: z.string().optional().nullable(),
+  category: z.string().optional().nullable(),
+  dueDate: z.string().datetime().optional().nullable(),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type CreateDebtInput = z.infer<typeof createDebtSchema>;
+export type UpdateDebtInput = z.infer<typeof updateDebtSchema>;
