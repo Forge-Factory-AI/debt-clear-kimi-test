@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Request, Response } from "express";
+import type { Request, Response, Router as ExpressRouter } from "express";
 import { prisma } from "../lib/prisma.js";
 import {
   hashPassword,
@@ -12,7 +12,7 @@ import { registerSchema, loginSchema } from "../lib/validators.js";
 import { authMiddleware } from "../middleware/auth.js";
 import type { AuthRequest } from "../middleware/auth.js";
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 const ACCESS_TOKEN_MAX_AGE = 15 * 60 * 1000; // 15 minutes
 const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
