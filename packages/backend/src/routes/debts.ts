@@ -249,4 +249,31 @@ router.post("/:id/restore", authMiddleware, async (req: AuthRequest, res: Respon
   res.status(200).json({ debt });
 });
 
+// PATCH /api/debts/:id/celebrate — mark a paid-off debt as celebrated
+router.patch("/:id/celebrate", authMiddleware, async (req: AuthRequest, res: Response) => {
+  const userId = getUserId(req);
+  const { id } = req.params;
+
+  const existing = await prisma.debt.findFirst({
+    where: { id, userId },
+  });
+
+  if (!existing) {
+    res.status(404).json({ error: "Debt not found" });
+    return;
+  }
+
+  const debt = await prisma.debt.update({
+    where: { id },
+    data: { celebrated: true },
+    include: {
+      payments: {
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+
+  res.status(200).json({ debt });
+});
+
 export default router;
