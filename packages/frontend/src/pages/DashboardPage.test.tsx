@@ -526,4 +526,582 @@ describe("DashboardPage", () => {
     });
     expect(screen.getByText("Add New Debt")).toBeInTheDocument();
   });
+
+  it("opens delete confirmation dialog when delete button is clicked", async () => {
+    mockAuthenticated();
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Car Loan")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /delete car loan/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Delete Debt")).toBeInTheDocument();
+    expect(screen.getByText(/are you sure you want to delete/i)).toBeInTheDocument();
+  });
+
+  it("closes delete dialog and does nothing on cancel", async () => {
+    mockAuthenticated();
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Car Loan")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /delete car loan/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // Both debts should still be present
+    expect(screen.getByText("Car Loan")).toBeInTheDocument();
+    expect(screen.getByText("Student Loan")).toBeInTheDocument();
+  });
+
+  it("deletes a debt and refreshes dashboard", async () => {
+    let deleted = false;
+    mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
+      const url = _url;
+      const method = options?.method ?? "GET";
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ user: { id: "1", email: "test@example.com", createdAt: "2024-01-01" } }),
+        });
+      }
+      if (url === "/api/debts/debt-1" && method === "DELETE") {
+        deleted = true;
+        return Promise.resolve({ ok: true, status: 204, json: () => Promise.resolve({}) });
+      }
+      if (url.includes("/api/debts") && !url.includes("/summary") && !deleted) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              debts: [
+                {
+                  id: "debt-1",
+                  name: "Car Loan",
+                  creditor: "Bank of America",
+                  originalAmount: 25000,
+                  remainingAmount: 15000,
+                  interestRate: 4.5,
+                  dueDate: null,
+                  isArchived: false,
+                  isPaidOff: false,
+                  paidOffAt: null,
+                  createdAt: "2024-01-01T00:00:00Z",
+                  updatedAt: "2024-01-01T00:00:00Z",
+                  userId: "1",
+                },
+                {
+                  id: "debt-2",
+                  name: "Student Loan",
+                  creditor: "Sallie Mae",
+                  originalAmount: 20000,
+                  remainingAmount: 5000,
+                  interestRate: 3.8,
+                  dueDate: "2025-06-01T00:00:00Z",
+                  isArchived: false,
+                  isPaidOff: false,
+                  paidOffAt: null,
+                  createdAt: "2024-01-01T00:00:00Z",
+                  updatedAt: "2024-01-01T00:00:00Z",
+                  userId: "1",
+                },
+              ],
+            }),
+        });
+      }
+      if (url.includes("/api/debts") && !url.includes("/summary") && deleted) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              debts: [
+                {
+                  id: "debt-2",
+                  name: "Student Loan",
+                  creditor: "Sallie Mae",
+                  originalAmount: 20000,
+                  remainingAmount: 5000,
+                  interestRate: 3.8,
+                  dueDate: "2025-06-01T00:00:00Z",
+                  isArchived: false,
+                  isPaidOff: false,
+                  paidOffAt: null,
+                  createdAt: "2024-01-01T00:00:00Z",
+                  updatedAt: "2024-01-01T00:00:00Z",
+                  userId: "1",
+                },
+              ],
+            }),
+        });
+      }
+      if (url.includes("/api/debts/summary") && !deleted) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              summary: {
+                totalOriginal: 45000,
+                totalRemaining: 20000,
+                totalPaid: 25000,
+                debtCount: 2,
+                paidOffCount: 0,
+                activeCount: 2,
+              },
+            }),
+        });
+      }
+      if (url.includes("/api/debts/summary") && deleted) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              summary: {
+                totalOriginal: 20000,
+                totalRemaining: 5000,
+                totalPaid: 15000,
+                debtCount: 1,
+                paidOffCount: 0,
+                activeCount: 1,
+              },
+            }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Car Loan")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /delete car loan/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    // Click the Delete button in the confirmation dialog
+    const confirmDeleteButton = screen.getByRole("button", { name: /^delete$/i });
+    fireEvent.click(confirmDeleteButton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("Car Loan")).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Student Loan")).toBeInTheDocument();
+  });
+
+  it("opens archive confirmation dialog when archive button is clicked", async () => {
+    mockAuthenticated();
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Car Loan")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /archive car loan/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Archive Debt")).toBeInTheDocument();
+    expect(screen.getByText(/are you sure you want to archive/i)).toBeInTheDocument();
+  });
+
+  it("closes archive dialog and does nothing on cancel", async () => {
+    mockAuthenticated();
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Car Loan")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /archive car loan/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // Both debts should still be present
+    expect(screen.getByText("Car Loan")).toBeInTheDocument();
+    expect(screen.getByText("Student Loan")).toBeInTheDocument();
+  });
+
+  it("archives a debt and removes it from dashboard", async () => {
+    let archived = false;
+    mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
+      const url = _url;
+      const method = options?.method ?? "GET";
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ user: { id: "1", email: "test@example.com", createdAt: "2024-01-01" } }),
+        });
+      }
+      if (url === "/api/debts/debt-1/archive" && method === "POST") {
+        archived = true;
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              debt: {
+                id: "debt-1",
+                name: "Car Loan",
+                creditor: "Bank of America",
+                originalAmount: 25000,
+                remainingAmount: 15000,
+                interestRate: 4.5,
+                dueDate: null,
+                isArchived: true,
+                isPaidOff: false,
+                paidOffAt: null,
+                createdAt: "2024-01-01T00:00:00Z",
+                updatedAt: "2024-01-01T00:00:00Z",
+                userId: "1",
+              },
+            }),
+        });
+      }
+      if (url.includes("/api/debts") && !url.includes("/summary") && !archived) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              debts: [
+                {
+                  id: "debt-1",
+                  name: "Car Loan",
+                  creditor: "Bank of America",
+                  originalAmount: 25000,
+                  remainingAmount: 15000,
+                  interestRate: 4.5,
+                  dueDate: null,
+                  isArchived: false,
+                  isPaidOff: false,
+                  paidOffAt: null,
+                  createdAt: "2024-01-01T00:00:00Z",
+                  updatedAt: "2024-01-01T00:00:00Z",
+                  userId: "1",
+                },
+                {
+                  id: "debt-2",
+                  name: "Student Loan",
+                  creditor: "Sallie Mae",
+                  originalAmount: 20000,
+                  remainingAmount: 5000,
+                  interestRate: 3.8,
+                  dueDate: "2025-06-01T00:00:00Z",
+                  isArchived: false,
+                  isPaidOff: false,
+                  paidOffAt: null,
+                  createdAt: "2024-01-01T00:00:00Z",
+                  updatedAt: "2024-01-01T00:00:00Z",
+                  userId: "1",
+                },
+              ],
+            }),
+        });
+      }
+      if (url.includes("/api/debts") && !url.includes("/summary") && archived) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              debts: [
+                {
+                  id: "debt-2",
+                  name: "Student Loan",
+                  creditor: "Sallie Mae",
+                  originalAmount: 20000,
+                  remainingAmount: 5000,
+                  interestRate: 3.8,
+                  dueDate: "2025-06-01T00:00:00Z",
+                  isArchived: false,
+                  isPaidOff: false,
+                  paidOffAt: null,
+                  createdAt: "2024-01-01T00:00:00Z",
+                  updatedAt: "2024-01-01T00:00:00Z",
+                  userId: "1",
+                },
+              ],
+            }),
+        });
+      }
+      if (url.includes("/api/debts/summary") && !archived) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              summary: {
+                totalOriginal: 45000,
+                totalRemaining: 20000,
+                totalPaid: 25000,
+                debtCount: 2,
+                paidOffCount: 0,
+                activeCount: 2,
+              },
+            }),
+        });
+      }
+      if (url.includes("/api/debts/summary") && archived) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              summary: {
+                totalOriginal: 20000,
+                totalRemaining: 5000,
+                totalPaid: 15000,
+                debtCount: 2,
+                paidOffCount: 0,
+                activeCount: 1,
+              },
+            }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Car Loan")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /archive car loan/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    // Click the Archive button in the confirmation dialog
+    const confirmArchiveButton = screen.getByRole("button", { name: /^archive$/i });
+    fireEvent.click(confirmArchiveButton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("Car Loan")).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Student Loan")).toBeInTheDocument();
+  });
+
+  it("shows toast notification on successful delete", async () => {
+    mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
+      const url = _url;
+      const method = options?.method ?? "GET";
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ user: { id: "1", email: "test@example.com", createdAt: "2024-01-01" } }),
+        });
+      }
+      if (url === "/api/debts/debt-1" && method === "DELETE") {
+        return Promise.resolve({ ok: true, status: 204, json: () => Promise.resolve({}) });
+      }
+      if (url.includes("/api/debts") && !url.includes("/summary")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              debts: [
+                {
+                  id: "debt-1",
+                  name: "Car Loan",
+                  creditor: "Bank of America",
+                  originalAmount: 25000,
+                  remainingAmount: 15000,
+                  interestRate: 4.5,
+                  dueDate: null,
+                  isArchived: false,
+                  isPaidOff: false,
+                  paidOffAt: null,
+                  createdAt: "2024-01-01T00:00:00Z",
+                  updatedAt: "2024-01-01T00:00:00Z",
+                  userId: "1",
+                },
+              ],
+            }),
+        });
+      }
+      if (url.includes("/api/debts/summary")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              summary: {
+                totalOriginal: 25000,
+                totalRemaining: 15000,
+                totalPaid: 10000,
+                debtCount: 1,
+                paidOffCount: 0,
+                activeCount: 1,
+              },
+            }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Car Loan")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /delete car loan/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Debt deleted successfully")).toBeInTheDocument();
+    });
+  });
+
+  it("shows toast notification on successful archive", async () => {
+    mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
+      const url = _url;
+      const method = options?.method ?? "GET";
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ user: { id: "1", email: "test@example.com", createdAt: "2024-01-01" } }),
+        });
+      }
+      if (url === "/api/debts/debt-1/archive" && method === "POST") {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              debt: {
+                id: "debt-1",
+                name: "Car Loan",
+                creditor: "Bank of America",
+                originalAmount: 25000,
+                remainingAmount: 15000,
+                interestRate: 4.5,
+                dueDate: null,
+                isArchived: true,
+                isPaidOff: false,
+                paidOffAt: null,
+                createdAt: "2024-01-01T00:00:00Z",
+                updatedAt: "2024-01-01T00:00:00Z",
+                userId: "1",
+              },
+            }),
+        });
+      }
+      if (url.includes("/api/debts") && !url.includes("/summary")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              debts: [
+                {
+                  id: "debt-1",
+                  name: "Car Loan",
+                  creditor: "Bank of America",
+                  originalAmount: 25000,
+                  remainingAmount: 15000,
+                  interestRate: 4.5,
+                  dueDate: null,
+                  isArchived: false,
+                  isPaidOff: false,
+                  paidOffAt: null,
+                  createdAt: "2024-01-01T00:00:00Z",
+                  updatedAt: "2024-01-01T00:00:00Z",
+                  userId: "1",
+                },
+              ],
+            }),
+        });
+      }
+      if (url.includes("/api/debts/summary")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              summary: {
+                totalOriginal: 25000,
+                totalRemaining: 15000,
+                totalPaid: 10000,
+                debtCount: 1,
+                paidOffCount: 0,
+                activeCount: 1,
+              },
+            }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Car Loan")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /archive car loan/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^archive$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Debt archived successfully")).toBeInTheDocument();
+    });
+  });
 });

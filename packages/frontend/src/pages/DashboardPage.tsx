@@ -5,12 +5,15 @@ import {
   getDebtSummary,
   createDebt,
   updateDebt,
+  deleteDebt,
+  archiveDebt,
   type Debt,
   type DebtSummary,
   type PaymentResult,
 } from "@/lib/api";
 import { useToast } from "@/contexts/ToastContext";
 import DebtDialog, { type DebtFormData } from "@/components/DebtDialog";
+import ConfirmDialog, { type ConfirmAction } from "@/components/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -26,6 +29,8 @@ import {
   Wallet,
   Plus,
   Pencil,
+  Trash2,
+  Archive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -173,9 +178,11 @@ interface DebtCardProps {
   index: number;
   onClick: () => void;
   onPaymentClick?: (debt: Debt) => void;
+  onDelete?: () => void;
+  onArchive?: () => void;
 }
 
-function DebtCard({ debt, index, onClick, onPaymentClick }: DebtCardProps) {
+function DebtCard({ debt, index, onClick, onPaymentClick, onDelete, onArchive }: DebtCardProps) {
   const original = debt.originalAmount ?? 0;
   const remaining = debt.remainingAmount ?? 0;
   const paid = original - remaining;
@@ -186,6 +193,16 @@ function DebtCard({ debt, index, onClick, onPaymentClick }: DebtCardProps) {
     const timer = setTimeout(() => setVisible(true), 100 + index * 100);
     return () => clearTimeout(timer);
   }, [index]);
+
+  function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    onDelete?.();
+  }
+
+  function handleArchive(e: React.MouseEvent) {
+    e.stopPropagation();
+    onArchive?.();
+  }
 
   return (
     <Card
@@ -249,6 +266,36 @@ function DebtCard({ debt, index, onClick, onPaymentClick }: DebtCardProps) {
             Log Payment
           </Button>
         )}
+        {(onDelete || onArchive) && (
+          <div className="flex items-center justify-end gap-2 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {onArchive && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-muted-foreground hover:text-yellow-400"
+                onClick={handleArchive}
+                aria-label={`Archive ${debt.name}`}
+              >
+                <Archive className="h-4 w-4 mr-1" />
+                Archive
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                onClick={handleDelete}
+                aria-label={`Delete ${debt.name}`}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete
+              </Button>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -288,6 +335,10 @@ export default function DashboardPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>("delete");
+  const [confirmDebt, setConfirmDebt] = useState<Debt | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
   const { toast } = useToast();
 
   // Payment dialog state
@@ -376,6 +427,37 @@ export default function DashboardPage() {
     },
     [loadData]
   );
+
+  function handleOpenConfirm(action: ConfirmAction, debt: Debt) {
+    setConfirmAction(action);
+    setConfirmDebt(debt);
+    setConfirmOpen(true);
+  }
+
+  function handleCloseConfirm() {
+    setConfirmOpen(false);
+    setTimeout(() => setConfirmDebt(null), 200);
+  }
+
+  async function handleConfirmAction() {
+    if (!confirmDebt) return;
+    setIsConfirming(true);
+    try {
+      if (confirmAction === "delete") {
+        await deleteDebt(confirmDebt.id);
+        toast("Debt deleted successfully", "success");
+      } else {
+        await archiveDebt(confirmDebt.id);
+        toast("Debt archived successfully", "success");
+      }
+      handleCloseConfirm();
+      await loadData();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Something went wrong", "error");
+    } finally {
+      setIsConfirming(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -468,6 +550,8 @@ export default function DashboardPage() {
                 index={index}
                 onClick={() => handleOpenEdit(debt)}
                 onPaymentClick={handlePaymentClick}
+                onDelete={() => handleOpenConfirm("delete", debt)}
+                onArchive={() => handleOpenConfirm("archive", debt)}
               />
             ))}
           </div>
@@ -506,6 +590,15 @@ export default function DashboardPage() {
           onOpenChange={setCelebrationOpen}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        action={confirmAction}
+        debtName={confirmDebt?.name ?? ""}
+        onConfirm={handleConfirmAction}
+        onCancel={handleCloseConfirm}
+        isLoading={isConfirming}
+      />
     </div>
   );
 }
