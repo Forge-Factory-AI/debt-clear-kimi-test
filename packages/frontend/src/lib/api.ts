@@ -125,6 +125,13 @@ export async function getArchivedDebts(): Promise<Debt[]> {
   return (data.debts as Debt[]) ?? [];
 }
 
+export async function getPaidOffDebts(): Promise<Debt[]> {
+  const res = await apiFetch("/debts?paidOff=true");
+  if (!res.ok) throw new Error("Failed to fetch paid-off debts");
+  const data = await res.json();
+  return (data.debts as Debt[]) ?? [];
+}
+
 export interface CreateDebtInput {
   name: string;
   creditor: string;
