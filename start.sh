@@ -4,14 +4,14 @@
 nginx
 
 # Run database migrations (non-fatal — may fail before DB is attached)
-cd /app
+cd /app/packages/backend
 npx prisma migrate deploy 2>&1 || echo "Migration warning (may be first run)"
 
-# Seed demo data on first deploy (idempotent — uses upserts)
+# Seed demo data on first deploy (idempotent)
 npx prisma db seed 2>&1 || echo "Seed warning (non-fatal)"
 
-# Start Next.js app in background
-PORT=3001 node server.js &
+# Start Express backend in background
+PORT=3001 node dist/index.js &
 
 # ── Start ForgeSmith (Hermes) if configured ──
 if [ -n "$FORGESMITH_ENABLED" ] && [ "$FORGESMITH_ENABLED" = "true" ]; then
