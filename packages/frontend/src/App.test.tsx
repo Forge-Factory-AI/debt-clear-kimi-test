@@ -3,6 +3,7 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AppRoutes } from "./App";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ToastProvider } from "@/contexts/ToastContext";
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -11,7 +12,9 @@ function renderWithProviders(initialRoute = "/") {
   return render(
     <MemoryRouter initialEntries={[initialRoute]}>
       <AuthProvider>
-        <AppRoutes />
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
       </AuthProvider>
     </MemoryRouter>
   );
