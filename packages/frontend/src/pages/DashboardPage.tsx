@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { getDebts, getDebtSummary, type Debt, type DebtSummary } from "@/lib/api";
+import { getDebts, getDebtSummary, type Debt, type DebtSummary, type PaymentResult } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import PaymentDialog from "@/components/PaymentDialog";
+import CelebrationDialog, { isDebtCelebrated } from "@/components/CelebrationDialog";
 import {
   DollarSign,
   TrendingDown,
@@ -158,9 +160,10 @@ function StatCard({
 interface DebtCardProps {
   debt: Debt;
   index: number;
+  onPaymentClick?: (debt: Debt) => void;
 }
 
-function DebtCard({ debt, index }: DebtCardProps) {
+function DebtCard({ debt, index, onPaymentClick }: DebtCardProps) {
   const original = debt.originalAmount ?? 0;
   const remaining = debt.remainingAmount ?? 0;
   const paid = original - remaining;
@@ -207,6 +210,17 @@ function DebtCard({ debt, index }: DebtCardProps) {
             <span>Due: {new Date(debt.dueDate).toLocaleDateString()}</span>
           )}
         </div>
+        {onPaymentClick && !debt.isPaidOff && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full mt-2"
+            onClick={() => onPaymentClick(debt)}
+          >
+            <DollarSign className="mr-1.5 h-4 w-4" />
+            Log Payment
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
@@ -242,30 +256,50 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
+  // Payment dialog state
+  const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
-    async function load() {
-      setIsLoading(true);
-      setError("");
-      try {
-        const [debtsData, summaryData] = await Promise.all([getDebts(), getDebtSummary()]);
-        if (!cancelled) {
-          setDebts(debtsData);
-          setSummary(summaryData);
-        }
-      } catch {
-        if (!cancelled) setError("Failed to load dashboard data");
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
+  // Celebration dialog state
+  const [celebrationDebt, setCelebrationDebt] = useState<Debt | null>(null);
+  const [celebrationOpen, setCelebrationOpen] = useState(false);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const [debtsData, summaryData] = await Promise.all([getDebts(), getDebtSummary()]);
+      setDebts(debtsData);
+      setSummary(summaryData);
+    } catch {
+      setError("Failed to load dashboard data");
+    } finally {
+      setIsLoading(false);
     }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handlePaymentClick = useCallback((debt: Debt) => {
+    setSelectedDebt(debt);
+    setPaymentDialogOpen(true);
+  }, []);
+
+  const handlePaymentCreated = useCallback(
+    (result: PaymentResult) => {
+      // Refresh dashboard data to show updated balances and stats
+      load();
+
+      // Show celebration if debt was paid off and not yet celebrated
+      if (result.debt.isPaidOff && !isDebtCelebrated(result.debt.id)) {
+        setCelebrationDebt(result.debt);
+        setCelebrationOpen(true);
+      }
+    },
+    [load]
+  );
 
   return (
     <div className="space-y-6">
@@ -344,11 +378,40 @@ export default function DashboardPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {debts.map((debt, index) => (
-              <DebtCard key={debt.id} debt={debt} index={index} />
+              <DebtCard
+                key={debt.id}
+                debt={debt}
+                index={index}
+                onPaymentClick={handlePaymentClick}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {/* Payment Dialog */}
+      {selectedDebt && (
+        <PaymentDialog
+          debtId={selectedDebt.id}
+          debtName={selectedDebt.name}
+          creditor={selectedDebt.creditor}
+          remainingAmount={selectedDebt.remainingAmount ?? 0}
+          open={paymentDialogOpen}
+          onOpenChange={setPaymentDialogOpen}
+          onPaymentCreated={handlePaymentCreated}
+        />
+      )}
+
+      {/* Celebration Dialog */}
+      {celebrationDebt && (
+        <CelebrationDialog
+          debtId={celebrationDebt.id}
+          debtName={celebrationDebt.name}
+          creditor={celebrationDebt.creditor}
+          open={celebrationOpen}
+          onOpenChange={setCelebrationOpen}
+        />
+      )}
     </div>
   );
 }
