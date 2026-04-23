@@ -73,7 +73,7 @@ export default function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Close dialog"
           >
             <X className="h-5 w-5" />

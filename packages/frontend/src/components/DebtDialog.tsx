@@ -222,7 +222,7 @@ export default function DebtDialog({
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Close dialog"
           >
             <X className="h-5 w-5" />
@@ -268,7 +268,7 @@ export default function DebtDialog({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="debt-original">Original Amount</Label>
                 <Input
@@ -315,7 +315,7 @@ export default function DebtDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="debt-rate">
                   Interest Rate (%)
