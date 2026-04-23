@@ -118,6 +118,13 @@ export async function getDebts(): Promise<Debt[]> {
   return (data.debts as Debt[]) ?? [];
 }
 
+export async function getArchivedDebts(): Promise<Debt[]> {
+  const res = await apiFetch("/debts?archived=true");
+  if (!res.ok) throw new Error("Failed to fetch archived debts");
+  const data = await res.json();
+  return (data.debts as Debt[]) ?? [];
+}
+
 export interface CreateDebtInput {
   name: string;
   creditor: string;
