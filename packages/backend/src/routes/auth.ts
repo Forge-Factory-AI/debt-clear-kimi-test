@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
 
-const router = Router();
+const router: Router = Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production";
 const ACCESS_TOKEN_EXPIRY = "15m";
