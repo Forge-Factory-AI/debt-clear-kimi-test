@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { getDebts, type Debt, type PaymentResult } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,17 +46,30 @@ function DebtRowSkeleton() {
 
 interface DebtRowProps {
   debt: Debt;
+  onClick: () => void;
   onPaymentClick: (debt: Debt) => void;
 }
 
-function DebtRow({ debt, onPaymentClick }: DebtRowProps) {
+function DebtRow({ debt, onClick, onPaymentClick }: DebtRowProps) {
   const original = debt.originalAmount ?? 0;
   const remaining = debt.remainingAmount ?? 0;
   const paid = original - remaining;
   const percentage = original > 0 ? Math.round((paid / original) * 100) : 0;
 
   return (
-    <Card className="transition-all hover:shadow-md">
+    <Card
+      className="transition-all hover:shadow-md cursor-pointer"
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      aria-label={`View details for ${debt.name}`}
+    >
       <CardContent className="p-4 md:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           {/* Debt info */}
@@ -129,6 +143,7 @@ function EmptyState() {
 // ─── Main Debts Page ────────────────────────────────────────
 
 export default function DebtsPage() {
+  const navigate = useNavigate();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -157,6 +172,13 @@ export default function DebtsPage() {
   useEffect(() => {
     loadDebts();
   }, [loadDebts]);
+
+  const handleNavigateToDetail = useCallback(
+    (debtId: string) => {
+      navigate(`/debts/${debtId}`);
+    },
+    [navigate]
+  );
 
   const handlePaymentClick = useCallback((debt: Debt) => {
     setSelectedDebt(debt);
@@ -203,6 +225,7 @@ export default function DebtsPage() {
             <DebtRow
               key={debt.id}
               debt={debt}
+              onClick={() => handleNavigateToDetail(debt.id)}
               onPaymentClick={handlePaymentClick}
             />
           ))}
