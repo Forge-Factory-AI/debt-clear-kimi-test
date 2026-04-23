@@ -22,6 +22,7 @@ function serializeDebt(debt: {
   dueDate: Date | null;
   isArchived: boolean;
   isPaidOff: boolean;
+  paidOffAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   userId: string;
@@ -36,6 +37,7 @@ function serializeDebt(debt: {
     dueDate: debt.dueDate,
     isArchived: debt.isArchived,
     isPaidOff: debt.isPaidOff,
+    paidOffAt: debt.paidOffAt,
     createdAt: debt.createdAt,
     updatedAt: debt.updatedAt,
     userId: debt.userId,

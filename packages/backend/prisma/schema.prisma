@@ -30,6 +30,7 @@ model Debt {
   dueDate      DateTime?
   isArchived   Boolean  @default(false)
   isPaidOff    Boolean  @default(false)
+  paidOffAt    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
