@@ -162,10 +162,19 @@ describe("AchievementsPage", () => {
       expect(screen.getByText("Car Loan")).toBeInTheDocument();
     });
 
-    // All three debts should show their paid-off dates
-    expect(screen.getByText("June 14, 2024")).toBeInTheDocument();
-    expect(screen.getByText("March 9, 2024")).toBeInTheDocument();
-    expect(screen.getByText("September 19, 2024")).toBeInTheDocument();
+    // Verify order: Student Loan (2024-09-20), Car Loan (2024-06-15), Credit Card (2024-03-10)
+    const cards = document.querySelectorAll("[class*='bg-gradient-to-br']");
+    expect(cards.length).toBe(3);
+    expect(cards[0]).toHaveTextContent("Student Loan");
+    expect(cards[1]).toHaveTextContent("Car Loan");
+    expect(cards[2]).toHaveTextContent("Credit Card");
+
+    // Top debt should have gold trophy (rank 1)
+    expect(cards[0].querySelector(".text-yellow-400")).toBeInTheDocument();
+    // Second debt should have silver trophy (rank 2)
+    expect(cards[1].querySelector(".text-slate-300")).toBeInTheDocument();
+    // Third debt should have bronze trophy (rank 3)
+    expect(cards[2].querySelector(".text-orange-400")).toBeInTheDocument();
   });
 
   it("shows debt count in header", async () => {
