@@ -58,7 +58,7 @@ function DebtRow({ debt, onClick, onPaymentClick }: DebtRowProps) {
 
   return (
     <Card
-      className="transition-all hover:shadow-md cursor-pointer"
+      className="transition-all hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -201,7 +201,7 @@ export default function DebtsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Debts</h1>
       </div>
 

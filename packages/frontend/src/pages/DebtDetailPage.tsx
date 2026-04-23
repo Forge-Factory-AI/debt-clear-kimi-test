@@ -110,7 +110,7 @@ function PaymentItem({ payment, onDelete }: PaymentItemProps) {
         variant="ghost"
         size="sm"
         onClick={() => onDelete(payment)}
-        className="shrink-0 text-muted-foreground hover:text-destructive"
+        className="shrink-0 text-muted-foreground hover:text-destructive min-h-[44px] min-w-[44px]"
         aria-label={`Delete payment of ${formatCurrency(payment.amount)}`}
       >
         <Trash2 className="h-4 w-4" />

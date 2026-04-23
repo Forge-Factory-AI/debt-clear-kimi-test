@@ -208,7 +208,7 @@ function DebtCard({ debt, index, onClick, onEdit, onPaymentClick, onDelete, onAr
   return (
     <Card
       className={cn(
-        "transition-all duration-500 hover:shadow-md cursor-pointer group",
+        "transition-all duration-500 hover:shadow-md cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
       )}
       onClick={onClick}
@@ -476,9 +476,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button onClick={handleOpenAdd} size="sm">
             <Plus className="mr-2 h-4 w-4" />
             Add Debt

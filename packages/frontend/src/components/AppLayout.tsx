@@ -185,7 +185,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Mobile sidebar drawer */}
           <aside
             id="mobile-sidebar"
-            className="fixed inset-y-0 left-0 z-30 w-64 bg-card border-r border-border"
+            className="fixed inset-y-0 left-0 z-30 w-64 bg-card border-r border-border overflow-y-auto"
             aria-label="Mobile sidebar"
           >
             <SidebarContent onNavigate={() => setMobileOpen(false)} />

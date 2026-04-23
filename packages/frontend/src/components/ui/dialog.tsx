@@ -51,7 +51,7 @@ export function DialogContent({
       {/* Content */}
       <div
         className={cn(
-          "relative z-50 w-full max-w-lg rounded-lg border bg-card p-6 text-card-foreground shadow-lg",
+          "relative z-50 w-full max-w-lg rounded-lg border bg-card p-4 sm:p-6 text-card-foreground shadow-lg",
           "animate-in fade-in zoom-in-95 duration-200",
           className
         )}
