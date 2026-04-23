@@ -18,6 +18,13 @@ vi.mock("../lib/prisma", () => ({
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production";
 
+function getCookies(res: request.Response): string[] {
+  const raw = res.headers["set-cookie"];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") return [raw];
+  return [];
+}
+
 function getCookieValue(cookies: string[], name: string): string | undefined {
   const cookie = cookies.find((c) => c.startsWith(`${name}=`));
   if (!cookie) return undefined;
@@ -47,8 +54,8 @@ describe("POST /api/auth/register", () => {
     expect(res.body.user).toBeDefined();
     expect(res.body.user.email).toBe("test@example.com");
 
-    const cookies = res.headers["set-cookie"] as string[];
-    expect(cookies).toBeDefined();
+    const cookies = getCookies(res);
+    expect(cookies.length).toBeGreaterThan(0);
     expect(getCookieValue(cookies, "access_token")).toBeDefined();
     expect(getCookieValue(cookies, "refresh_token")).toBeDefined();
   });
@@ -143,8 +150,8 @@ describe("POST /api/auth/login", () => {
     expect(res.status).toBe(200);
     expect(res.body.user).toBeDefined();
 
-    const cookies = res.headers["set-cookie"] as string[];
-    expect(cookies).toBeDefined();
+    const cookies = getCookies(res);
+    expect(cookies.length).toBeGreaterThan(0);
     expect(getCookieValue(cookies, "access_token")).toBeDefined();
     expect(getCookieValue(cookies, "refresh_token")).toBeDefined();
   });
@@ -203,8 +210,8 @@ describe("POST /api/auth/logout", () => {
 
     expect(res.status).toBe(200);
 
-    const cookies = res.headers["set-cookie"] as string[];
-    expect(cookies).toBeDefined();
+    const cookies = getCookies(res);
+    expect(cookies.length).toBeGreaterThan(0);
     expect(getCookieValue(cookies, "access_token")).toBe("");
     expect(getCookieValue(cookies, "refresh_token")).toBe("");
   });
@@ -232,8 +239,8 @@ describe("POST /api/auth/refresh", () => {
 
     expect(res.status).toBe(200);
 
-    const cookies = res.headers["set-cookie"] as string[];
-    expect(cookies).toBeDefined();
+    const cookies = getCookies(res);
+    expect(cookies.length).toBeGreaterThan(0);
     expect(getCookieValue(cookies, "access_token")).toBeDefined();
     expect(getCookieValue(cookies, "refresh_token")).toBeDefined();
   });
