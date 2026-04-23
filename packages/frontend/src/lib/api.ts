@@ -105,6 +105,50 @@ export async function getDebts(): Promise<Debt[]> {
   return (data.debts as Debt[]) ?? [];
 }
 
+export interface CreateDebtInput {
+  name: string;
+  creditor: string;
+  originalAmount: number;
+  remainingAmount?: number;
+  interestRate?: number;
+  dueDate?: string;
+}
+
+export interface UpdateDebtInput {
+  name?: string;
+  creditor?: string;
+  originalAmount?: number;
+  remainingAmount?: number;
+  interestRate?: number;
+  dueDate?: string | null;
+}
+
+export async function createDebt(input: CreateDebtInput): Promise<Debt> {
+  const res = await apiFetch("/debts", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to create debt");
+  }
+  const data = await res.json();
+  return data.debt as Debt;
+}
+
+export async function updateDebt(id: string, input: UpdateDebtInput): Promise<Debt> {
+  const res = await apiFetch(`/debts/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to update debt");
+  }
+  const data = await res.json();
+  return data.debt as Debt;
+}
+
 export async function getDebtSummary(): Promise<DebtSummary> {
   const res = await apiFetch("/debts/summary");
   if (!res.ok) throw new Error("Failed to fetch summary");
