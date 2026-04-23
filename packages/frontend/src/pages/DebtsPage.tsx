@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getDebts, type Debt, type PaymentResult } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,10 +9,7 @@ import CelebrationDialog, { isDebtCelebrated } from "@/components/CelebrationDia
 import {
   CreditCard,
   DollarSign,
-  Calendar,
   Wallet,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +53,6 @@ function DebtRow({ debt, onPaymentClick }: DebtRowProps) {
   const remaining = debt.remainingAmount ?? 0;
   const paid = original - remaining;
   const percentage = original > 0 ? Math.round((paid / original) * 100) : 0;
-  const [showHistory, setShowHistory] = useState(false);
 
   return (
     <Card className="transition-all hover:shadow-md">
