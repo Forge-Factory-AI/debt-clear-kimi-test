@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: debtclear
       POSTGRES_DB: debtclear
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -24,6 +24,7 @@ services:
       PORT: 3001
       NODE_ENV: production
     ports:
+      - "13000:3000"
       - "13001:3001"
     depends_on:
       db:
