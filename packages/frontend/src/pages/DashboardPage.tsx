@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   getDebts,
@@ -7,6 +7,7 @@ import {
   updateDebt,
   type Debt,
   type DebtSummary,
+  type PaymentResult,
 } from "@/lib/api";
 import { useToast } from "@/contexts/ToastContext";
 import DebtDialog, { type DebtFormData } from "@/components/DebtDialog";
@@ -14,6 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import PaymentDialog from "@/components/PaymentDialog";
+import CelebrationDialog, { isDebtCelebrated } from "@/components/CelebrationDialog";
 import {
   DollarSign,
   TrendingDown,
@@ -169,9 +172,10 @@ interface DebtCardProps {
   debt: Debt;
   index: number;
   onClick: () => void;
+  onPaymentClick?: (debt: Debt) => void;
 }
 
-function DebtCard({ debt, index, onClick }: DebtCardProps) {
+function DebtCard({ debt, index, onClick, onPaymentClick }: DebtCardProps) {
   const original = debt.originalAmount ?? 0;
   const remaining = debt.remainingAmount ?? 0;
   const paid = original - remaining;
@@ -231,6 +235,20 @@ function DebtCard({ debt, index, onClick }: DebtCardProps) {
             <span>Due: {new Date(debt.dueDate).toLocaleDateString()}</span>
           )}
         </div>
+        {onPaymentClick && !debt.isPaidOff && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full mt-2"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPaymentClick(debt);
+            }}
+          >
+            <DollarSign className="mr-1.5 h-4 w-4" />
+            Log Payment
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
@@ -272,7 +290,15 @@ export default function DashboardPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  async function loadData() {
+  // Payment dialog state
+  const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+
+  // Celebration dialog state
+  const [celebrationDebt, setCelebrationDebt] = useState<Debt | null>(null);
+  const [celebrationOpen, setCelebrationOpen] = useState(false);
+
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     setError("");
     try {
@@ -284,32 +310,11 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function init() {
-      setIsLoading(true);
-      setError("");
-      try {
-        const [debtsData, summaryData] = await Promise.all([getDebts(), getDebtSummary()]);
-        if (!cancelled) {
-          setDebts(debtsData);
-          setSummary(summaryData);
-        }
-      } catch {
-        if (!cancelled) setError("Failed to load dashboard data");
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    }
-
-    init();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    loadData();
+  }, [loadData]);
 
   function handleOpenAdd() {
     setEditingDebt(null);
@@ -323,7 +328,6 @@ export default function DashboardPage() {
 
   function handleCloseDialog() {
     setDialogOpen(false);
-    // Reset after animation
     setTimeout(() => setEditingDebt(null), 200);
   }
 
@@ -355,6 +359,23 @@ export default function DashboardPage() {
       setIsSubmitting(false);
     }
   }
+
+  const handlePaymentClick = useCallback((debt: Debt) => {
+    setSelectedDebt(debt);
+    setPaymentDialogOpen(true);
+  }, []);
+
+  const handlePaymentCreated = useCallback(
+    (result: PaymentResult) => {
+      loadData();
+
+      if (result.debt.isPaidOff && !isDebtCelebrated(result.debt.id)) {
+        setCelebrationDebt(result.debt);
+        setCelebrationOpen(true);
+      }
+    },
+    [loadData]
+  );
 
   return (
     <div className="space-y-6">
@@ -441,12 +462,19 @@ export default function DashboardPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {debts.map((debt, index) => (
-              <DebtCard key={debt.id} debt={debt} index={index} onClick={() => handleOpenEdit(debt)} />
+              <DebtCard
+                key={debt.id}
+                debt={debt}
+                index={index}
+                onClick={() => handleOpenEdit(debt)}
+                onPaymentClick={handlePaymentClick}
+              />
             ))}
           </div>
         )}
       </div>
 
+      {/* Debt Dialog */}
       <DebtDialog
         open={dialogOpen}
         onClose={handleCloseDialog}
@@ -454,6 +482,30 @@ export default function DashboardPage() {
         debt={editingDebt}
         isLoading={isSubmitting}
       />
+
+      {/* Payment Dialog */}
+      {selectedDebt && (
+        <PaymentDialog
+          debtId={selectedDebt.id}
+          debtName={selectedDebt.name}
+          creditor={selectedDebt.creditor}
+          remainingAmount={selectedDebt.remainingAmount ?? 0}
+          open={paymentDialogOpen}
+          onOpenChange={setPaymentDialogOpen}
+          onPaymentCreated={handlePaymentCreated}
+        />
+      )}
+
+      {/* Celebration Dialog */}
+      {celebrationDebt && (
+        <CelebrationDialog
+          debtId={celebrationDebt.id}
+          debtName={celebrationDebt.name}
+          creditor={celebrationDebt.creditor}
+          open={celebrationOpen}
+          onOpenChange={setCelebrationOpen}
+        />
+      )}
     </div>
   );
 }
