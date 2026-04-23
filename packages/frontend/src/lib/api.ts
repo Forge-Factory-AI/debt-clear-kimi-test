@@ -98,6 +98,19 @@ export interface DebtSummary {
   activeCount: number;
 }
 
+export interface Payment {
+  id: string;
+  amount: number;
+  note: string | null;
+  paidAt: Date;
+  debtId: string;
+}
+
+export interface PaymentResult {
+  payment: Payment;
+  debt: Debt;
+}
+
 export async function getDebts(): Promise<Debt[]> {
   const res = await apiFetch("/debts");
   if (!res.ok) throw new Error("Failed to fetch debts");
@@ -189,4 +202,35 @@ export async function getDebtSummary(): Promise<DebtSummary> {
     paidOffCount: 0,
     activeCount: 0,
   };
+}
+
+export async function getDebtWithPayments(id: string): Promise<Debt & { payments: Payment[] }> {
+  const res = await apiFetch(`/debts/${id}`);
+  if (!res.ok) throw new Error("Failed to fetch debt");
+  const data = await res.json();
+  return data.debt as Debt & { payments: Payment[] };
+}
+
+export async function getDebtPayments(id: string): Promise<Payment[]> {
+  const res = await apiFetch(`/debts/${id}/payments`);
+  if (!res.ok) throw new Error("Failed to fetch payments");
+  const data = await res.json();
+  return (data.payments as Payment[]) ?? [];
+}
+
+export async function createPayment(debtId: string, amount: number, note?: string): Promise<PaymentResult> {
+  const res = await apiFetch(`/debts/${debtId}/payments`, {
+    method: "POST",
+    body: JSON.stringify({ amount, note }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to create payment");
+  return data as PaymentResult;
+}
+
+export async function celebrateDebt(id: string): Promise<{ message: string; debt: Debt }> {
+  const res = await apiFetch(`/debts/${id}/celebrate`, { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to celebrate");
+  return data.celebration as { message: string; debt: Debt };
 }

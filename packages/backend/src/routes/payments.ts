@@ -14,12 +14,14 @@ function decimalToNumber(d: Prisma.Decimal | number | null | undefined): number 
 function serializePayment(payment: {
   id: string;
   amount: Prisma.Decimal;
+  note: string | null;
   paidAt: Date;
   debtId: string;
 }) {
   return {
     id: payment.id,
     amount: decimalToNumber(payment.amount),
+    note: payment.note,
     paidAt: payment.paidAt,
     debtId: payment.debtId,
   };
@@ -62,7 +64,7 @@ router.use(authMiddleware);
 // POST /api/debts/:id/payments - Create a payment against a debt
 router.post("/:id/payments", async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { amount } = req.body;
+  const { amount, note } = req.body;
 
   // Validate amount
   if (amount === undefined || amount === null) {
@@ -72,6 +74,13 @@ router.post("/:id/payments", async (req: Request, res: Response) => {
   const numAmount = typeof amount === "string" ? Number(amount) : Number(amount);
   if (Number.isNaN(numAmount) || numAmount <= 0) {
     res.status(400).json({ error: "Amount must be a positive number" });
+    return;
+  }
+
+  // Validate note
+  const trimmedNote = typeof note === "string" ? note.trim() : null;
+  if (trimmedNote !== null && trimmedNote.length > 255) {
+    res.status(400).json({ error: "Note must be 255 characters or less" });
     return;
   }
 
@@ -93,12 +102,17 @@ router.post("/:id/payments", async (req: Request, res: Response) => {
   const newRemaining = Prisma.Decimal.max(debt.remainingAmount.minus(paymentAmount), new Prisma.Decimal(0));
   const isPayoff = newRemaining.equals(0) && !debt.isPaidOff;
 
+  const createData: { amount: Prisma.Decimal; debtId: string; note?: string } = {
+    amount: paymentAmount,
+    debtId: id,
+  };
+  if (trimmedNote) {
+    createData.note = trimmedNote;
+  }
+
   const [payment, updatedDebt] = await prisma.$transaction([
     prisma.payment.create({
-      data: {
-        amount: paymentAmount,
-        debtId: id,
-      },
+      data: createData,
     }),
     prisma.debt.update({
       where: { id },
