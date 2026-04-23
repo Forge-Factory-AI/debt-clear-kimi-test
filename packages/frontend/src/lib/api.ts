@@ -149,6 +149,34 @@ export async function updateDebt(id: string, input: UpdateDebtInput): Promise<De
   return data.debt as Debt;
 }
 
+export async function deleteDebt(id: string): Promise<void> {
+  const res = await apiFetch(`/debts/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to delete debt");
+  }
+}
+
+export async function archiveDebt(id: string): Promise<Debt> {
+  const res = await apiFetch(`/debts/${id}/archive`, { method: "POST" });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to archive debt");
+  }
+  const data = await res.json();
+  return data.debt as Debt;
+}
+
+export async function restoreDebt(id: string): Promise<Debt> {
+  const res = await apiFetch(`/debts/${id}/restore`, { method: "POST" });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to restore debt");
+  }
+  const data = await res.json();
+  return data.debt as Debt;
+}
+
 export async function getDebtSummary(): Promise<DebtSummary> {
   const res = await apiFetch("/debts/summary");
   if (!res.ok) throw new Error("Failed to fetch summary");
