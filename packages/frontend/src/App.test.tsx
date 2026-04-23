@@ -277,7 +277,11 @@ describe("Logout", () => {
       expect(screen.getByText("Welcome to DebtClear")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /log out/i }));
+    // Open user menu in sidebar
+    fireEvent.click(screen.getByRole("button", { name: /test@example.com/i }));
+
+    // Click logout in dropdown
+    fireEvent.click(screen.getByRole("menuitem", { name: /log out/i }));
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: /log in/i })).toBeInTheDocument();

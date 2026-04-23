@@ -3,7 +3,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import DashboardPage from "@/pages/DashboardPage";
+import DebtsPage from "@/pages/DebtsPage";
+import AchievementsPage from "@/pages/AchievementsPage";
+import ArchivedPage from "@/pages/ArchivedPage";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AppLayout from "@/components/AppLayout";
+
+function AppLayoutWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <ProtectedRoute>
+      <AppLayout>{children}</AppLayout>
+    </ProtectedRoute>
+  );
+}
 
 export function AppRoutes() {
   const { user, isLoading } = useAuth();
@@ -29,9 +41,33 @@ export function AppRoutes() {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute>
+          <AppLayoutWrapper>
             <DashboardPage />
-          </ProtectedRoute>
+          </AppLayoutWrapper>
+        }
+      />
+      <Route
+        path="/debts"
+        element={
+          <AppLayoutWrapper>
+            <DebtsPage />
+          </AppLayoutWrapper>
+        }
+      />
+      <Route
+        path="/achievements"
+        element={
+          <AppLayoutWrapper>
+            <AchievementsPage />
+          </AppLayoutWrapper>
+        }
+      />
+      <Route
+        path="/archived"
+        element={
+          <AppLayoutWrapper>
+            <ArchivedPage />
+          </AppLayoutWrapper>
         }
       />
       <Route
