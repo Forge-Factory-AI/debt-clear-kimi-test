@@ -39,6 +39,9 @@ RUN cd packages/backend && pnpm prisma generate
 # Copy built frontend
 COPY --from=build /app/packages/frontend/dist /usr/share/nginx/html
 
+# ForgeSmith files
+COPY forgesmith /opt/forgesmith
+
 # Nginx config
 RUN rm -f /etc/nginx/http.d/default.conf 2>/dev/null || true
 COPY nginx.conf /etc/nginx/http.d/app.conf
