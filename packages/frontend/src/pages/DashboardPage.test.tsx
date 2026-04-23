@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ToastProvider } from "@/contexts/ToastContext";
 import DashboardPage from "./DashboardPage";
 
 const mockFetch = vi.fn();
@@ -135,7 +136,9 @@ function renderWithProviders() {
   return render(
     <MemoryRouter>
       <AuthProvider>
-        <DashboardPage />
+        <ToastProvider>
+          <DashboardPage />
+        </ToastProvider>
       </AuthProvider>
     </MemoryRouter>
   );
@@ -269,7 +272,258 @@ describe("DashboardPage", () => {
       expect(screen.getByText("Car Loan")).toBeInTheDocument();
     });
 
-    const grid = screen.getByText("Active Debts").closest("div")?.querySelector(".grid");
+    const grid = document.querySelector(".grid.gap-4.sm\\:grid-cols-2");
     expect(grid).toBeTruthy();
+  });
+
+  it("renders Add Debt button", async () => {
+    mockAuthenticated();
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /add debt/i })).toBeInTheDocument();
+    });
+  });
+
+  it("opens add dialog when Add Debt button is clicked", async () => {
+    mockAuthenticated();
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /add debt/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /add debt/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Add New Debt")).toBeInTheDocument();
+  });
+
+  it("opens edit dialog when debt card is clicked", async () => {
+    mockAuthenticated();
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Car Loan")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByLabelText(/edit car loan/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Edit Debt")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Car Loan")).toBeInTheDocument();
+  });
+
+  it("closes dialog and discards on cancel", async () => {
+    mockAuthenticated();
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /add debt/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /add debt/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
+
+  it("creates a debt and refreshes dashboard", async () => {
+    let created = false;
+    mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
+      const url = _url;
+      const method = options?.method ?? "GET";
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ user: { id: "1", email: "test@example.com", createdAt: "2024-01-01" } }),
+        });
+      }
+      if (url === "/api/debts" && method === "POST") {
+        created = true;
+        return Promise.resolve({
+          ok: true,
+          status: 201,
+          json: () =>
+            Promise.resolve({
+              debt: {
+                id: "debt-new",
+                name: "New Debt",
+                creditor: "New Bank",
+                originalAmount: 10000,
+                remainingAmount: 10000,
+                interestRate: null,
+                dueDate: null,
+                isArchived: false,
+                isPaidOff: false,
+                paidOffAt: null,
+                createdAt: "2024-01-02T00:00:00Z",
+                updatedAt: "2024-01-02T00:00:00Z",
+                userId: "1",
+              },
+            }),
+        });
+      }
+      if (url === "/api/debts" && !created) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              debts: [
+                {
+                  id: "debt-1",
+                  name: "Car Loan",
+                  creditor: "Bank of America",
+                  originalAmount: 25000,
+                  remainingAmount: 15000,
+                  interestRate: 4.5,
+                  dueDate: null,
+                  isArchived: false,
+                  isPaidOff: false,
+                  paidOffAt: null,
+                  createdAt: "2024-01-01T00:00:00Z",
+                  updatedAt: "2024-01-01T00:00:00Z",
+                  userId: "1",
+                },
+              ],
+            }),
+        });
+      }
+      if (url === "/api/debts" && created) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              debts: [
+                {
+                  id: "debt-1",
+                  name: "Car Loan",
+                  creditor: "Bank of America",
+                  originalAmount: 25000,
+                  remainingAmount: 15000,
+                  interestRate: 4.5,
+                  dueDate: null,
+                  isArchived: false,
+                  isPaidOff: false,
+                  paidOffAt: null,
+                  createdAt: "2024-01-01T00:00:00Z",
+                  updatedAt: "2024-01-01T00:00:00Z",
+                  userId: "1",
+                },
+                {
+                  id: "debt-new",
+                  name: "New Debt",
+                  creditor: "New Bank",
+                  originalAmount: 10000,
+                  remainingAmount: 10000,
+                  interestRate: null,
+                  dueDate: null,
+                  isArchived: false,
+                  isPaidOff: false,
+                  paidOffAt: null,
+                  createdAt: "2024-01-02T00:00:00Z",
+                  updatedAt: "2024-01-02T00:00:00Z",
+                  userId: "1",
+                },
+              ],
+            }),
+        });
+      }
+      if (url.includes("/api/debts/summary") && !created) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              summary: {
+                totalOriginal: 25000,
+                totalRemaining: 15000,
+                totalPaid: 10000,
+                debtCount: 1,
+                paidOffCount: 0,
+                activeCount: 1,
+              },
+            }),
+        });
+      }
+      if (url.includes("/api/debts/summary") && created) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              summary: {
+                totalOriginal: 35000,
+                totalRemaining: 25000,
+                totalPaid: 10000,
+                debtCount: 2,
+                paidOffCount: 0,
+                activeCount: 2,
+              },
+            }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /add debt/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /add debt/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/debt name/i), { target: { value: "New Debt" } });
+    fireEvent.change(screen.getByLabelText(/creditor/i), { target: { value: "New Bank" } });
+    fireEvent.change(screen.getByLabelText(/original amount/i), { target: { value: "10000" } });
+
+    const submitButton = screen.getAllByRole("button", { name: /add debt/i }).find(
+      (b) => b.getAttribute("type") === "submit"
+    );
+    expect(submitButton).toBeTruthy();
+    fireEvent.click(submitButton!);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("New Debt")).toBeInTheDocument();
+    });
+  });
+
+  it("empty state Add Your First Debt button opens add dialog", async () => {
+    mockEmptyState();
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText(/no active debts/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /add your first debt/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Add New Debt")).toBeInTheDocument();
   });
 });
