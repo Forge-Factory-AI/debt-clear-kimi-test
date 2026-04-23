@@ -4,6 +4,7 @@ import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import DashboardPage from "@/pages/DashboardPage";
 import DebtsPage from "@/pages/DebtsPage";
+import DebtDetailPage from "@/pages/DebtDetailPage";
 import AchievementsPage from "@/pages/AchievementsPage";
 import ArchivedPage from "@/pages/ArchivedPage";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -51,6 +52,14 @@ export function AppRoutes() {
         element={
           <AppLayoutWrapper>
             <DebtsPage />
+          </AppLayoutWrapper>
+        }
+      />
+      <Route
+        path="/debts/:id"
+        element={
+          <AppLayoutWrapper>
+            <DebtDetailPage />
           </AppLayoutWrapper>
         }
       />

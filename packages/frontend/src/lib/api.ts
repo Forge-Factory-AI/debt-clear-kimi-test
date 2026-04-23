@@ -241,3 +241,11 @@ export async function celebrateDebt(id: string): Promise<{ message: string; debt
   if (!res.ok) throw new Error(data.error || "Failed to celebrate");
   return data.celebration as { message: string; debt: Debt };
 }
+
+export async function deletePayment(id: string): Promise<void> {
+  const res = await apiFetch(`/payments/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to delete payment");
+  }
+}

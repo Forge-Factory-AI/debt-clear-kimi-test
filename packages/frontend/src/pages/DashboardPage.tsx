@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   getDebts,
   getDebtSummary,
@@ -177,12 +177,13 @@ interface DebtCardProps {
   debt: Debt;
   index: number;
   onClick: () => void;
+  onEdit?: (debt: Debt) => void;
   onPaymentClick?: (debt: Debt) => void;
   onDelete?: () => void;
   onArchive?: () => void;
 }
 
-function DebtCard({ debt, index, onClick, onPaymentClick, onDelete, onArchive }: DebtCardProps) {
+function DebtCard({ debt, index, onClick, onEdit, onPaymentClick, onDelete, onArchive }: DebtCardProps) {
   const original = debt.originalAmount ?? 0;
   const remaining = debt.remainingAmount ?? 0;
   const paid = original - remaining;
@@ -219,7 +220,7 @@ function DebtCard({ debt, index, onClick, onPaymentClick, onDelete, onArchive }:
           onClick();
         }
       }}
-      aria-label={`Edit ${debt.name}`}
+      aria-label={`View details for ${debt.name}`}
     >
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -235,7 +236,16 @@ function DebtCard({ debt, index, onClick, onPaymentClick, onDelete, onArchive }:
             >
               {percentage}%
             </span>
-            <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true" />
+            {onEdit && (
+              <Pencil
+                className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                aria-label={`Edit ${debt.name}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(debt);
+                }}
+              />
+            )}
           </div>
         </div>
         <p className="text-sm text-muted-foreground">{debt.creditor}</p>
@@ -340,6 +350,7 @@ export default function DashboardPage() {
   const [confirmDebt, setConfirmDebt] = useState<Debt | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Payment dialog state
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
@@ -375,6 +386,10 @@ export default function DashboardPage() {
   function handleOpenEdit(debt: Debt) {
     setEditingDebt(debt);
     setDialogOpen(true);
+  }
+
+  function handleNavigateToDetail(debtId: string) {
+    navigate(`/debts/${debtId}`);
   }
 
   function handleCloseDialog() {
@@ -548,7 +563,8 @@ export default function DashboardPage() {
                 key={debt.id}
                 debt={debt}
                 index={index}
-                onClick={() => handleOpenEdit(debt)}
+                onClick={() => handleNavigateToDetail(debt.id)}
+                onEdit={handleOpenEdit}
                 onPaymentClick={handlePaymentClick}
                 onDelete={() => handleOpenConfirm("delete", debt)}
                 onArchive={() => handleOpenConfirm("archive", debt)}
