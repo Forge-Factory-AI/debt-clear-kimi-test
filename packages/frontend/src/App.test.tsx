@@ -35,6 +35,29 @@ function mockAuthenticated() {
         json: () => Promise.resolve({ user: { id: "1", email: "test@example.com", createdAt: "2024-01-01" } }),
       });
     }
+    if (url.includes("/api/debts/summary")) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          summary: {
+            totalOriginal: 0,
+            totalRemaining: 0,
+            totalPaid: 0,
+            debtCount: 0,
+            paidOffCount: 0,
+            activeCount: 0,
+          },
+        }),
+      });
+    }
+    if (url.includes("/api/debts") && !url.includes("/summary")) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ debts: [] }),
+      });
+    }
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
   });
 }
@@ -58,7 +81,7 @@ describe("App routing", () => {
     renderWithProviders("/");
 
     await waitFor(() => {
-      expect(screen.getByText("Welcome to DebtClear")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /dashboard/i })).toBeInTheDocument();
     });
   });
 });
@@ -146,7 +169,7 @@ describe("LoginPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /log in/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Welcome to DebtClear")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /dashboard/i })).toBeInTheDocument();
     });
   });
 });
@@ -241,7 +264,7 @@ describe("RegisterPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /sign up/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Welcome to DebtClear")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /dashboard/i })).toBeInTheDocument();
     });
   });
 });
@@ -268,13 +291,36 @@ describe("Logout", () => {
       if (url.includes("/auth/logout")) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ message: "Logged out" }) });
       }
+      if (url.includes("/api/debts/summary")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({
+            summary: {
+              totalOriginal: 0,
+              totalRemaining: 0,
+              totalPaid: 0,
+              debtCount: 0,
+              paidOffCount: 0,
+              activeCount: 0,
+            },
+          }),
+        });
+      }
+      if (url.includes("/api/debts") && !url.includes("/summary")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ debts: [] }),
+        });
+      }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
     renderWithProviders("/dashboard");
 
     await waitFor(() => {
-      expect(screen.getByText("Welcome to DebtClear")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /dashboard/i })).toBeInTheDocument();
     });
 
     // Open user menu in sidebar
@@ -308,7 +354,7 @@ describe("Route protection", () => {
     renderWithProviders("/login");
 
     await waitFor(() => {
-      expect(screen.getByText("Welcome to DebtClear")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /dashboard/i })).toBeInTheDocument();
     });
   });
 });
